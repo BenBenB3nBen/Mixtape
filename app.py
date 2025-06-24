@@ -24,7 +24,7 @@ auth_manager = SpotifyOAuth(
 # 👉 Zugriffstoken aus Session oder via Login holen
 if "token_info" not in st.session_state:
     # Versuche, ob Token im Redirect verfügbar ist
-    code = st.experimental_get_query_params().get("code", [None])[0]
+    code = st.query_params.get("code", [None])[0]
     if code:
         token_info = auth_manager.get_access_token(code, as_dict=True)
         st.session_state.token_info = token_info
