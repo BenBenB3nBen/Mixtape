@@ -26,28 +26,26 @@ code = st.query_params.get("code", [None])[0]
 
 # 💾 Falls noch kein Token gespeichert
 if "token_info" not in st.session_state:
-    if code:
-        try:
-            # Token mit Code holen
-            token_info = auth_manager.get_access_token(code, as_dict=True)
-            st.session_state.token_info = token_info
+    token_info = auth_manager.get_cached_token()
 
-            # ✅ Wichtig: Entfernt ?code=... aus URL, damit es nicht nochmal verarbeitet wird
-            st.experimental_set_query_params()
-
-        except Exception as e:
-            st.error(f"⚠️ Fehler beim Authentifizieren:\n\n{e}")
+    if not token_info:
+        code = st.query_params.get("code", [None])[0]
+        if code:
+            try:
+                token_info = auth_manager.get_access_token(code, as_dict=True)
+                st.session_state.token_info = token_info
+                st.experimental_set_query_params()
+            except Exception as e:
+                st.error(f"⚠️ Fehler bei Spotify Login: {e}")
+                st.stop()
+        else:
+            auth_url = auth_manager.get_authorize_url()
+            st.warning("Bitte bei Spotify einloggen:")
+            st.markdown(f"[🔑 Login starten]({auth_url})")
             st.stop()
     else:
-        # Noch nicht eingeloggt → Login-Link zeigen
-        auth_url = auth_manager.get_authorize_url()
-        st.warning("Bitte zuerst bei Spotify einloggen, um fortzufahren:")
-        st.markdown(f"[🔑 Bei Spotify einloggen]({auth_url})")
-        st.stop()
+        st.session_state.token_info = token_info
 
-# 🟢 Zugriffstoken verwenden
-token = st.session_state.token_info["access_token"]
-sp = spotipy.Spotify(auth=token)
 
 # 🔎 Formular zur Suche
 with st.form("search_form"):
