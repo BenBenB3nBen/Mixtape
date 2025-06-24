@@ -1,4 +1,3 @@
-
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -19,14 +18,24 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope="playlist-modify-public"
 ))
 
-query = st.text_input("🎧 Künstler oder Song eingeben", "")
+with st.form("search_form"):
+    query = st.text_input("🎧 Künstler oder Song eingeben", "")
+    submitted = st.form_submit_button("🔍 Suche starten")
 
-if query:
-    results = sp.search(q=query, limit=1, type="track")
-    if results["tracks"]["items"]:
-        track = results["tracks"]["items"][0]
-        track_id = track["id"]
-        st.success(f"Gefunden: {track['name']} von {track['artists'][0]['name']}")
+if submitted and query:
+    results = sp.search(q=query, type="track", limit=10)
+    found_track = None
+
+    for track in results["tracks"]["items"]:
+        name = track["name"].lower()
+        artist = track["artists"][0]["name"].lower()
+        if all(term in (name + " " + artist) for term in query.lower().split()):
+            found_track = track
+            break
+
+    if found_track:
+        track_id = found_track["id"]
+        st.success(f"Gefunden: {found_track['name']} von {found_track['artists'][0]['name']}")
         recommendations = sp.recommendations(seed_tracks=[track_id], limit=5)
         st.subheader("🎵 Ähnliche Songs")
         for rec in recommendations["tracks"]:
