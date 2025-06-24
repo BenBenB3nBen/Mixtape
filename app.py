@@ -11,27 +11,34 @@ client_id = st.secrets["SPOTIPY_CLIENT_ID"]
 client_secret = st.secrets["SPOTIPY_CLIENT_SECRET"]
 redirect_uri = st.secrets["SPOTIPY_REDIRECT_URI"]
 
-# SessionState für Token speichern
+# Spotify Auth-Manager vorbereiten
+auth_manager = SpotifyOAuth(
+    client_id=client_id,
+    client_secret=client_secret,
+    redirect_uri=redirect_uri,
+    scope="playlist-modify-public",
+    cache_path=None,
+    show_dialog=True
+)
+
+# 👉 Zugriffstoken aus Session oder via Login holen
 if "token_info" not in st.session_state:
-    auth_manager = SpotifyOAuth(
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uri=redirect_uri,
-        scope="playlist-modify-public",
-        cache_path=None,
-        show_dialog=True
-    )
-    try:
-        token_info = auth_manager.get_access_token(as_dict=True)
+    # Versuche, ob Token im Redirect verfügbar ist
+    code = st.experimental_get_query_params().get("code", [None])[0]
+    if code:
+        token_info = auth_manager.get_access_token(code, as_dict=True)
         st.session_state.token_info = token_info
-    except:
+    else:
+        # Noch nicht eingeloggt → Link anzeigen
         auth_url = auth_manager.get_authorize_url()
         st.warning("Bitte zuerst bei Spotify einloggen, um fortzufahren:")
         st.markdown(f"[🔑 Bei Spotify einloggen]({auth_url})")
         st.stop()
 
+# ✅ Zugriffstoken verwenden
 token = st.session_state.token_info["access_token"]
 sp = spotipy.Spotify(auth=token)
+
 
 with st.form("search_form"):
     query = st.text_input("🎧 Künstler oder Song eingeben", "")
