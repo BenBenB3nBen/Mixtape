@@ -17,6 +17,13 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     redirect_uri=redirect_uri,
     scope="playlist-modify-public"
 ))
+# Wenn kein gültiger Token vorhanden ist, zeige Login-Link
+auth_manager = sp.auth_manager
+if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
+    auth_url = auth_manager.get_authorize_url()
+    st.warning("Bitte erst bei Spotify einloggen, um die Suche zu aktivieren:")
+    st.markdown(f"[🔑 Bei Spotify einloggen]({auth_url})")
+    st.stop()
 
 with st.form("search_form"):
     query = st.text_input("🎧 Künstler oder Song eingeben", "")
