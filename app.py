@@ -1,3 +1,4 @@
+
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -6,29 +7,32 @@ st.set_page_config(page_title="Mixtape Generator", page_icon="🎶")
 st.title("🎶 Mixtape Generator")
 st.markdown("Gib einen Song oder Künstler ein, um ähnliche Musik zu entdecken!")
 
-# Spotify API Zugriff einrichten
 client_id = st.secrets["SPOTIPY_CLIENT_ID"]
 client_secret = st.secrets["SPOTIPY_CLIENT_SECRET"]
 redirect_uri = st.secrets["SPOTIPY_REDIRECT_URI"]
 
-auth_manager = SpotifyOAuth(
-    client_id=client_id,
-    client_secret=client_secret,
-    redirect_uri=redirect_uri,
-    scope="playlist-modify-public"
-)
+# SessionState für Token speichern
+if "token_info" not in st.session_state:
+    auth_manager = SpotifyOAuth(
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=redirect_uri,
+        scope="playlist-modify-public",
+        cache_path=None,
+        show_dialog=True
+    )
+    try:
+        token_info = auth_manager.get_access_token(as_dict=True)
+        st.session_state.token_info = token_info
+    except:
+        auth_url = auth_manager.get_authorize_url()
+        st.warning("Bitte zuerst bei Spotify einloggen, um fortzufahren:")
+        st.markdown(f"[🔑 Bei Spotify einloggen]({auth_url})")
+        st.stop()
 
-# 👉 Login prüfen
-if not auth_manager.validate_token(auth_manager.cache_handler.get_cached_token()):
-    auth_url = auth_manager.get_authorize_url()
-    st.warning("Bitte zuerst bei Spotify einloggen, um die Suche zu aktivieren:")
-    st.markdown(f"[🔑 Bei Spotify einloggen]({auth_url})")
-    st.stop()
+token = st.session_state.token_info["access_token"]
+sp = spotipy.Spotify(auth=token)
 
-# Spotipy-Instanz mit gültigem Token
-sp = spotipy.Spotify(auth_manager=auth_manager)
-
-# 🎯 Formular für Benutzereingabe
 with st.form("search_form"):
     query = st.text_input("🎧 Künstler oder Song eingeben", "")
     submitted = st.form_submit_button("🔍 Suche starten")
@@ -37,7 +41,6 @@ if submitted and query:
     results = sp.search(q=query, type="track", limit=10)
     found_track = None
 
-    # Kombisuche: Begriffe in Name + Künstler
     for track in results["tracks"]["items"]:
         name = track["name"].lower()
         artist = track["artists"][0]["name"].lower()
