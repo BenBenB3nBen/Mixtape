@@ -26,25 +26,23 @@ code = st.query_params.get("code", [None])[0]
 
 # 💾 Falls noch kein Token gespeichert
 if "token_info" not in st.session_state:
-    token_info = auth_manager.get_cached_token()
-
-    if not token_info:
-        code = st.query_params.get("code", [None])[0]
-        if code:
-            try:
-                token_info = auth_manager.get_access_token(code, as_dict=True)
-                st.session_state.token_info = token_info
-                st.experimental_set_query_params()
-            except Exception as e:
-                st.error(f"⚠️ Fehler bei Spotify Login: {e}")
-                st.stop()
-        else:
-            auth_url = auth_manager.get_authorize_url()
-            st.warning("Bitte bei Spotify einloggen:")
-            st.markdown(f"[🔑 Login starten]({auth_url})")
+    code = st.query_params.get("code", [None])[0]
+    if code:
+        try:
+            token_info = auth_manager.get_access_token(code, as_dict=True)
+            if not token_info or "access_token" not in token_info:
+                raise Exception("Token-Antwort fehlerhaft")
+            st.session_state.token_info = token_info
+            st.experimental_set_query_params()  # ⚠️ Sehr wichtig
+        except Exception as e:
+            st.error(f"⚠️ Fehler beim Spotify Login:\n\n{e}")
             st.stop()
     else:
-        st.session_state.token_info = token_info
+        auth_url = auth_manager.get_authorize_url()
+        st.warning("Bitte bei Spotify einloggen:")
+        st.markdown(f"[🔑 Login starten]({auth_url})")
+        st.stop()
+
 
 
 # 🔎 Formular zur Suche
