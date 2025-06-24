@@ -1,4 +1,3 @@
-
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -7,11 +6,12 @@ st.set_page_config(page_title="Mixtape Generator", page_icon="🎶")
 st.title("🎶 Mixtape Generator")
 st.markdown("Gib einen Song oder Künstler ein, um ähnliche Musik zu entdecken!")
 
+# 🔑 Spotify-Zugangsdaten aus secrets
 client_id = st.secrets["SPOTIPY_CLIENT_ID"]
 client_secret = st.secrets["SPOTIPY_CLIENT_SECRET"]
 redirect_uri = st.secrets["SPOTIPY_REDIRECT_URI"]
 
-# Spotify Auth-Manager vorbereiten
+# 🎟️ Auth-Manager einrichten
 auth_manager = SpotifyOAuth(
     client_id=client_id,
     client_secret=client_secret,
@@ -21,25 +21,35 @@ auth_manager = SpotifyOAuth(
     show_dialog=True
 )
 
-# 👉 Zugriffstoken aus Session oder via Login holen
+# 🧠 Code aus URL holen (nur beim Redirect verfügbar)
+code = st.query_params.get("code", [None])[0]
+
+# 💾 Falls noch kein Token gespeichert
 if "token_info" not in st.session_state:
-    # Versuche, ob Token im Redirect verfügbar ist
-    code = st.query_params.get("code", [None])[0]
     if code:
-        token_info = auth_manager.get_access_token(code, as_dict=True)
-        st.session_state.token_info = token_info
+        try:
+            # Token mit Code holen
+            token_info = auth_manager.get_access_token(code, as_dict=True)
+            st.session_state.token_info = token_info
+
+            # ✅ Wichtig: Entfernt ?code=... aus URL, damit es nicht nochmal verarbeitet wird
+            st.experimental_set_query_params()
+
+        except Exception as e:
+            st.error(f"⚠️ Fehler beim Authentifizieren:\n\n{e}")
+            st.stop()
     else:
-        # Noch nicht eingeloggt → Link anzeigen
+        # Noch nicht eingeloggt → Login-Link zeigen
         auth_url = auth_manager.get_authorize_url()
         st.warning("Bitte zuerst bei Spotify einloggen, um fortzufahren:")
         st.markdown(f"[🔑 Bei Spotify einloggen]({auth_url})")
         st.stop()
 
-# ✅ Zugriffstoken verwenden
+# 🟢 Zugriffstoken verwenden
 token = st.session_state.token_info["access_token"]
 sp = spotipy.Spotify(auth=token)
 
-
+# 🔎 Formular zur Suche
 with st.form("search_form"):
     query = st.text_input("🎧 Künstler oder Song eingeben", "")
     submitted = st.form_submit_button("🔍 Suche starten")
